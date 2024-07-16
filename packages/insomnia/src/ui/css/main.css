@@ -1023,7 +1023,7 @@ strong {
   padding: 0 var(--padding-md);
   height: var(--line-height-xs);
 }
-.btn.btn--super-duper-compact {
+.btn.btn--super-super-compact {
   padding: var(--padding-xxs) var(--padding-sm);
   height: auto;
 }
@@ -1160,6 +1160,11 @@ button {
 *[theme] .theme--transparent-overlay,
 *[subtheme] .theme--transparent-overlay {
   --color-bg: rgba(5, 5, 5, 0.7);
+  --color-font: #ddd;
+}
+*[theme] .theme--transparent-overlay-darker,
+*[subtheme] .theme--transparent-overlay-darker {
+  --color-bg: rgba(5, 5, 5, 0.8);
   --color-font: #ddd;
 }
 [class^='http-method-'],
@@ -2081,6 +2086,9 @@ html {
 }
 .graphql-explorer__defs li {
   margin-bottom: var(--padding-md);
+}
+.graphql-explorer__defs .tooltip {
+  margin-left: var(--padding-sm);
 }
 .graphql-explorer a {
   font-weight: normal !important;

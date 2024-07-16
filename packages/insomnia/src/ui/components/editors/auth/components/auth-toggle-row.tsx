@@ -1,10 +1,10 @@
-import React, { FC, ReactNode, useCallback } from 'react';
+import React, { type FC, type ReactNode, useCallback } from 'react';
 import { useRouteLoaderData } from 'react-router-dom';
 
 import { toKebabCase } from '../../../../../common/misc';
 import { useRequestGroupPatcher, useRequestPatcher } from '../../../../hooks/use-request';
-import { RequestLoaderData } from '../../../../routes/request';
-import { RequestGroupLoaderData } from '../../../../routes/request-group';
+import type { RequestLoaderData } from '../../../../routes/request';
+import type { RequestGroupLoaderData } from '../../../../routes/request-group';
 import { AuthRow } from './auth-row';
 
 interface Props {
@@ -45,7 +45,7 @@ export const AuthToggleRow: FC<Props> = ({
   return (
     <AuthRow labelFor={toKebabCase(label)} label={label} help={help} disabled={disabled}>
       <button
-        className="btn btn--super-duper-compact"
+        className="btn btn--super-super-compact"
         id={toKebabCase(label)}
         onClick={() => onChange(!databaseValue)}
         title={isActuallyOn ? onTitle : offTitle}

@@ -1,4 +1,4 @@
-import React, { FC } from 'react';
+import React, { type FC } from 'react';
 import { useParams } from 'react-router-dom';
 import styled from 'styled-components';
 
@@ -217,6 +217,7 @@ export const EmptyStatePane: FC<Props> = ({ createRequestCollection, createDesig
         </AlmostSquareButton>
         <AlmostSquareButton
           aria-label='Clone git repository'
+          data-test-git-enable={isGitSyncEnabled}
           onClick={
             () => {
               isGitSyncEnabled ?

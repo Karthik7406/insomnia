@@ -1,11 +1,11 @@
-import React, { ComponentProps, FC, ReactNode, useCallback } from 'react';
+import React, { type ComponentProps, type FC, type ReactNode, useCallback } from 'react';
 import { useRouteLoaderData } from 'react-router-dom';
 import { useToggle } from 'react-use';
 
 import { toKebabCase } from '../../../../../common/misc';
 import { useRequestGroupPatcher, useRequestPatcher } from '../../../../hooks/use-request';
-import { RequestLoaderData } from '../../../../routes/request';
-import { RequestGroupLoaderData } from '../../../../routes/request-group';
+import type { RequestLoaderData } from '../../../../routes/request';
+import type { RequestGroupLoaderData } from '../../../../routes/request-group';
 import { useRootLoaderData } from '../../../../routes/root';
 import { OneLineEditor } from '../../../codemirror/one-line-editor';
 import { AuthRow } from './auth-row';
@@ -51,7 +51,7 @@ export const AuthInputRow: FC<Props> = ({ label, getAutocompleteConstants, prope
       />
       {canBeMasked ? (
         <button
-          className="btn btn--super-duper-compact pointer"
+          className="btn btn--super-super-compact pointer"
           onClick={toggleMask}
           disabled={disabled}
         >

@@ -1,25 +1,25 @@
-import { IconName } from '@fortawesome/fontawesome-svg-core';
-import React, { FC, ReactNode, useCallback, useState } from 'react';
+import type { IconName } from '@fortawesome/fontawesome-svg-core';
+import React, { type FC, type ReactNode, useCallback, useState } from 'react';
 import { Button, Collection, Dialog, Header, Heading, Menu, MenuItem, MenuTrigger, Modal, ModalOverlay, Popover, Section } from 'react-aria-components';
 import { useFetcher, useParams, useRouteLoaderData } from 'react-router-dom';
 
 import { getProductName } from '../../../common/constants';
 import { database as db } from '../../../common/database';
-import { exportMockServerToFile } from '../../../common/export';
+import { exportGlobalEnvironmentToFile, exportMockServerToFile } from '../../../common/export';
 import { getWorkspaceLabel } from '../../../common/get-workspace-label';
 import { RENDER_PURPOSE_NO_RENDER } from '../../../common/render';
-import { PlatformKeyCombinations } from '../../../common/settings';
+import type { PlatformKeyCombinations } from '../../../common/settings';
 import { isRemoteProject } from '../../../models/project';
 import { isRequest } from '../../../models/request';
 import { isRequestGroup } from '../../../models/request-group';
-import { isScratchpad, Workspace } from '../../../models/workspace';
+import { isScratchpad, type Workspace } from '../../../models/workspace';
 import type { WorkspaceAction } from '../../../plugins';
 import { getWorkspaceActions } from '../../../plugins';
 import * as pluginContexts from '../../../plugins/context';
 import { invariant } from '../../../utils/invariant';
 import { useAIContext } from '../../context/app/ai-context';
 import { useRootLoaderData } from '../../routes/root';
-import { WorkspaceLoaderData } from '../../routes/workspace';
+import type { WorkspaceLoaderData } from '../../routes/workspace';
 import { DropdownHint } from '../base/dropdown/dropdown-hint';
 import { Icon } from '../icon';
 import { InsomniaAI } from '../insomnia-ai-icon';
@@ -122,9 +122,17 @@ export const WorkspaceDropdown: FC = () => {
       id: 'Export',
       name: 'Export',
       icon: <Icon icon='file-export' />,
-      action: () => activeWorkspace.scope !== 'mock-server'
-        ? setIsExportModalOpen(true)
-        : exportMockServerToFile(activeWorkspace),
+      action: () => {
+        if (activeWorkspace.scope === 'mock-server') {
+          return exportMockServerToFile(activeWorkspace);
+        }
+
+        if (activeWorkspace.scope === 'environment') {
+          return exportGlobalEnvironmentToFile(activeWorkspace);
+        }
+
+        return setIsExportModalOpen(true);
+      },
     }],
   }];
 
@@ -187,9 +195,17 @@ export const WorkspaceDropdown: FC = () => {
             id: 'export',
             name: 'Export',
             icon: <Icon icon='file-export' />,
-            action: () => activeWorkspace.scope !== 'mock-server'
-              ? setIsExportModalOpen(true)
-              : exportMockServerToFile(activeWorkspace),
+            action: () => {
+              if (activeWorkspace.scope === 'mock-server') {
+                return exportMockServerToFile(activeWorkspace);
+              }
+
+              if (activeWorkspace.scope === 'environment') {
+                return exportGlobalEnvironmentToFile(activeWorkspace);
+              }
+
+              return setIsExportModalOpen(true);
+            },
           },
           {
             id: 'settings',

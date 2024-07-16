@@ -1,4 +1,4 @@
-import React, { FC, Fragment, useState } from 'react';
+import React, { type FC, Fragment, useState } from 'react';
 import { Button, Heading, Tab, TabList, TabPanel, Tabs, ToggleButton } from 'react-aria-components';
 import { useParams, useRouteLoaderData } from 'react-router-dom';
 import { useLocalStorage } from 'react-use';
@@ -6,13 +6,14 @@ import { useLocalStorage } from 'react-use';
 import { getContentTypeFromHeaders } from '../../../common/constants';
 import * as models from '../../../models';
 import { queryAllWorkspaceUrls } from '../../../models/helpers/query-all-workspace-urls';
-import { getCombinedPathParametersFromUrl, RequestParameter } from '../../../models/request';
+import { getCombinedPathParametersFromUrl, type RequestParameter } from '../../../models/request';
 import type { Settings } from '../../../models/settings';
+import { getAuthObjectOrNull } from '../../../network/authentication';
 import { deconstructQueryStringToParams, extractQueryStringFromUrl } from '../../../utils/url/querystring';
 import { useRequestPatcher, useSettingsPatcher } from '../../hooks/use-request';
 import { useActiveRequestSyncVCSVersion, useGitVCSVersion } from '../../hooks/use-vcs-version';
-import { RequestLoaderData } from '../../routes/request';
-import { WorkspaceLoaderData } from '../../routes/workspace';
+import type { RequestLoaderData } from '../../routes/request';
+import type { WorkspaceLoaderData } from '../../routes/workspace';
 import { OneLineEditor } from '../codemirror/one-line-editor';
 import { AuthWrapper } from '../editors/auth/auth-wrapper';
 import { BodyEditor } from '../editors/body/body-editor';
@@ -93,6 +94,9 @@ export const RequestPane: FC<Props> = ({
   const contentType =
     getContentTypeFromHeaders(activeRequest.headers) ||
     activeRequest.body.mimeType;
+  const isBodyEmpty = Boolean(typeof activeRequest.body.mimeType !== 'string' && !activeRequest.body.text);
+  const requestAuth = getAuthObjectOrNull(activeRequest.authentication);
+  const isNoneOrInherited = requestAuth?.type === 'none' || requestAuth === null;
 
   return (
     <Pane type="request">
@@ -125,12 +129,23 @@ export const RequestPane: FC<Props> = ({
             id='content-type'
           >
             <span>Body</span>
+            {!isBodyEmpty && (
+              <span className='p-1 min-w-6 h-6 flex items-center justify-center text-xs rounded-lg border border-solid border-[--hl]'>
+                <span className='w-2 h-2 bg-green-500 rounded-full' />
+              </span>
+            )}
           </Tab>
           <Tab
             className='flex-shrink-0 h-full flex items-center justify-between cursor-pointer gap-2 outline-none select-none px-3 py-1 text-[--hl] aria-selected:text-[--color-font]  hover:bg-[--hl-sm] hover:text-[--color-font] aria-selected:bg-[--hl-xs] aria-selected:focus:bg-[--hl-sm] aria-selected:hover:bg-[--hl-sm] focus:bg-[--hl-sm] transition-colors duration-300'
             id='auth'
           >
             <span>Auth</span>
+
+            {!isNoneOrInherited && (
+              <span className='p-1 min-w-6 h-6 flex items-center justify-center text-xs rounded-lg border border-solid border-[--hl]'>
+                <span className='w-2 h-2 bg-green-500 rounded-full' />
+              </span>
+            )}
           </Tab>
           <Tab
             className='flex-shrink-0 h-full flex items-center justify-between cursor-pointer gap-2 outline-none select-none px-3 py-1 text-[--hl] aria-selected:text-[--color-font]  hover:bg-[--hl-sm] hover:text-[--color-font] aria-selected:bg-[--hl-xs] aria-selected:focus:bg-[--hl-sm] aria-selected:hover:bg-[--hl-sm] focus:bg-[--hl-sm] transition-colors duration-300'
@@ -341,7 +356,7 @@ export const RequestPane: FC<Props> = ({
                 errorClassName="tall wide vertically-align font-error pad text-center"
               >
                 <RequestScriptEditor
-                  uniquenessKey={uniqueKey}
+                  uniquenessKey={`${activeRequest._id}:pre-request-script`}
                   defaultValue={activeRequest.preRequestScript || ''}
                   onChange={preRequestScript => patchRequest(requestId, { preRequestScript })}
                   settings={settings}
@@ -354,7 +369,7 @@ export const RequestPane: FC<Props> = ({
                 errorClassName="tall wide vertically-align font-error pad text-center"
               >
                 <RequestScriptEditor
-                  uniquenessKey={uniqueKey}
+                  uniquenessKey={`${activeRequest._id}:after-response-script`}
                   defaultValue={activeRequest.afterResponseScript || ''}
                   onChange={afterResponseScript => patchRequest(requestId, { afterResponseScript })}
                   settings={settings}
@@ -365,6 +380,7 @@ export const RequestPane: FC<Props> = ({
         </TabPanel>
         <TabPanel className='w-full flex-1 overflow-y-auto' id='docs'>
           <MarkdownEditor
+            key={uniqueKey}
             placeholder="Write a description"
             defaultValue={activeRequest.description}
             onChange={(description: string) => patchRequest(requestId, { description })}

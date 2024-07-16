@@ -1,4 +1,4 @@
-import { ValueOf } from 'type-fest';
+import type { ValueOf } from 'type-fest';
 
 /**
  * The readable definition of a hotkey.
@@ -101,6 +101,8 @@ export interface Settings {
   disableHtmlPreviewJs: boolean;
 
   disableResponsePreviewLinks: boolean;
+
+  disableAppVersionUserAgent: boolean;
 
   /** If true, Insomnia won’t show a notification when new updates are available. Users can still check for updates in Preferences. */
   disableUpdateNotification: boolean;

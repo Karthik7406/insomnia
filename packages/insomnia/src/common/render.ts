@@ -5,11 +5,11 @@ import * as models from '../models';
 import type { CookieJar } from '../models/cookie-jar';
 import type { Environment } from '../models/environment';
 import type { GrpcRequest, GrpcRequestBody } from '../models/grpc-request';
-import { isProject, Project } from '../models/project';
+import { isProject, type Project } from '../models/project';
 import { PATH_PARAMETER_REGEX, type Request } from '../models/request';
-import { isRequestGroup, RequestGroup } from '../models/request-group';
-import { WebSocketRequest } from '../models/websocket-request';
-import { isWorkspace, Workspace } from '../models/workspace';
+import { isRequestGroup, type RequestGroup } from '../models/request-group';
+import type { WebSocketRequest } from '../models/websocket-request';
+import { isWorkspace, type Workspace } from '../models/workspace';
 import * as templating from '../templating';
 import * as templatingUtils from '../templating/utils';
 import { setDefaultProtocol } from '../utils/url/protocol';
@@ -574,7 +574,10 @@ export async function getRenderedRequestAndContext(
   const renderedRequest = renderResult._request;
   const renderedCookieJar = renderResult._cookieJar;
   renderedRequest.description = await render(description, renderContext, null, KEEP_ON_ERROR);
-  const suppressUserAgent = request.headers.some(h => h.name.toLowerCase() === 'user-agent' && h.disabled === true);
+  const userAgentHeaders = request.headers.filter(h => h.name.toLowerCase() === 'user-agent');
+  const noUserAgents = userAgentHeaders.length === 0;
+  const allUserAgentHeadersDisabled = userAgentHeaders.every(h => h.disabled === true);
+  const suppressUserAgent = noUserAgents || allUserAgentHeadersDisabled;
   // Remove disabled params
   renderedRequest.parameters = renderedRequest.parameters.filter(p => !p.disabled);
   // Remove disabled headers

@@ -149,6 +149,22 @@ describe('test Url object', () => {
             testName: 'hybrid of path params and tags',
             url: '{{ baseUrl }}/:path_{{ _.pathSuffix }}',
         },
+        {
+            testName: '@ is used in path',
+            url: '{{ baseUrl }}/tom@any.com',
+        },
+        {
+            testName: '@ is used in auth and path',
+            url: 'user:pass@a.com/tom@any.com',
+        },
+        {
+            testName: '@ is used in auth',
+            url: 'user:pass@a.com/',
+        },
+        {
+            testName: '@ is used in path with path params, targs and hash',
+            url: '{{ baseUrl }}/:path__{{ _.pathSuffix }}/tom@any.com#hash',
+        },
     ];
 
     urlParsingTests.forEach(testCase => {
@@ -192,7 +208,7 @@ describe('test Url Match Pattern', () => {
         try {
             const matchPattern = new UrlMatchPattern(pattern);
             matchPattern.testProtocol('http');
-        } catch (e) {
+        } catch (e: any) {
             expect(e.message).toContain('UrlMatchPattern: protocol is not specified');
         }
     });

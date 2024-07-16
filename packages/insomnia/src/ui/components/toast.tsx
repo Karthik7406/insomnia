@@ -1,6 +1,6 @@
 import classnames from 'classnames';
 import type { IpcRendererEvent } from 'electron';
-import React, { FC, useEffect, useState } from 'react';
+import React, { type FC, useEffect, useState } from 'react';
 import styled from 'styled-components';
 
 import {
@@ -140,7 +140,7 @@ export const Toast: FC = () => {
         <p>{notification?.message || 'Unknown'}</p>
         <StyledFooter>
           <button
-            className="btn btn--super-duper-compact btn--outlined"
+            className="btn btn--super-super-compact btn--outlined"
             onClick={() => {
               if (notification) {
                 // Hide the currently showing notification
@@ -158,7 +158,7 @@ export const Toast: FC = () => {
           &nbsp;&nbsp;
           <Link
             button
-            className="btn btn--super-duper-compact btn--outlined no-wrap"
+            className="btn btn--super-super-compact btn--outlined no-wrap"
             onClick={() => {
               if (notification) {
                 // Hide the currently showing notification

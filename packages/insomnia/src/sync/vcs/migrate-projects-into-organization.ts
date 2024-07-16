@@ -1,7 +1,6 @@
 import { database } from '../../common/database';
 import * as models from '../../models';
-import { Organization } from '../../models/organization';
-import { Project, RemoteProject } from '../../models/project';
+import type { Project, RemoteProject } from '../../models/project';
 
 // Migration:
 // Team ~= Project > Workspaces
@@ -32,9 +31,9 @@ export const shouldMigrateProjectUnderOrganization = async () => {
 };
 
 export const migrateProjectsIntoOrganization = async ({
-  personalOrganization,
+  personalOrganizationId,
 }: {
-  personalOrganization: Organization;
+    personalOrganizationId: string;
   }) => {
   // Legacy remote projects without organizations
   // Local projects without organizations except scratchpad
@@ -65,7 +64,7 @@ export const migrateProjectsIntoOrganization = async ({
   for (const localProject of localProjects) {
     updatePromises.push(
       models.project.update(localProject, {
-        parentId: personalOrganization.id,
+        parentId: personalOrganizationId,
       })
     );
   }

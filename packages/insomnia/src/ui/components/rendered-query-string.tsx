@@ -1,35 +1,16 @@
 import classNames from 'classnames';
-import React, { FC, useEffect, useState } from 'react';
-import styled from 'styled-components';
+import React, { type FC, useEffect, useState } from 'react';
 
 import { database as db } from '../../common/database';
 import * as models from '../../models';
-import { PATH_PARAMETER_REGEX, Request, RequestAuthentication, RequestParameter } from '../../models/request';
-import { isRequestGroup, RequestGroup } from '../../models/request-group';
-import { WebSocketRequest } from '../../models/websocket-request';
+import { PATH_PARAMETER_REGEX, type Request, type RequestAuthentication, type RequestParameter } from '../../models/request';
+import { isRequestGroup, type RequestGroup } from '../../models/request-group';
+import type { WebSocketRequest } from '../../models/websocket-request';
 import { getAuthObjectOrNull, isAuthEnabled } from '../../network/authentication';
 import { getOrInheritAuthentication } from '../../network/network';
 import { buildQueryStringFromParams, joinUrlAndQueryString, smartEncodeUrl } from '../../utils/url/querystring';
 import { useNunjucks } from '../context/nunjucks/use-nunjucks';
-import { CopyButton as _CopyButton } from './base/copy-button';
-
-const Wrapper = styled.div({
-  display: 'flex',
-  justifyContent: 'space-between',
-  overflow: 'auto',
-  position: 'relative',
-  height: '100%',
-  gap: 'var(--padding-sm)',
-  width: '100%',
-});
-
-const CopyButton = styled(_CopyButton)({
-  '&&': {
-    alignSelf: 'start',
-    position: 'sticky',
-    top: 0,
-  },
-});
+import { CopyButton } from './base/copy-button';
 
 interface Props {
   request: Request | WebSocketRequest;
@@ -118,7 +99,7 @@ export const RenderedQueryString: FC<Props> = ({ request }) => {
   const className = previewString === defaultPreview ? 'super-duper-faint' : 'selectable force-wrap';
 
   return (
-    <Wrapper>
+    <div className="flex justify-between overflow-auto relative h-full gap-[var(--padding-sm)] w-full">
       <span className={classNames('my-auto', className)}>{previewString}</span>
 
       <CopyButton
@@ -127,9 +108,10 @@ export const RenderedQueryString: FC<Props> = ({ request }) => {
         disabled={previewString === defaultPreview}
         title="Copy URL"
         confirmMessage=""
+        className='self-start sticky top-0'
       >
         <i className="fa fa-copy" />
       </CopyButton>
-    </Wrapper>
+    </div>
   );
 };

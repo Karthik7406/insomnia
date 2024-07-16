@@ -3,35 +3,35 @@ import path from 'node:path';
 
 import * as contentDisposition from 'content-disposition';
 import { extension as mimeExtension } from 'mime-types';
-import { ActionFunction, LoaderFunction, redirect } from 'react-router-dom';
+import { type ActionFunction, type LoaderFunction, redirect } from 'react-router-dom';
 
 import { version } from '../../../package.json';
 import { CONTENT_TYPE_EVENT_STREAM, CONTENT_TYPE_GRAPHQL, CONTENT_TYPE_JSON, METHOD_GET, METHOD_POST } from '../../common/constants';
-import { ChangeBufferEvent, database } from '../../common/database';
+import { type ChangeBufferEvent, database } from '../../common/database';
 import { getContentDispositionHeader } from '../../common/misc';
-import { RENDER_PURPOSE_SEND, RenderedRequest } from '../../common/render';
-import { ResponsePatch } from '../../main/network/libcurl-promise';
+import { RENDER_PURPOSE_SEND, type RenderedRequest } from '../../common/render';
+import type { ResponsePatch } from '../../main/network/libcurl-promise';
+import type { BaseModel } from '../../models';
 import * as models from '../../models';
-import { BaseModel } from '../../models';
-import { CookieJar } from '../../models/cookie-jar';
-import { GrpcRequest, isGrpcRequestId } from '../../models/grpc-request';
-import { GrpcRequestMeta } from '../../models/grpc-request-meta';
+import type { CookieJar } from '../../models/cookie-jar';
+import { type GrpcRequest, isGrpcRequestId } from '../../models/grpc-request';
+import type { GrpcRequestMeta } from '../../models/grpc-request-meta';
 import * as requestOperations from '../../models/helpers/request-operations';
-import { MockRoute } from '../../models/mock-route';
-import { MockServer } from '../../models/mock-server';
-import { getPathParametersFromUrl, isEventStreamRequest, isRequest, Request, RequestAuthentication, RequestBody, RequestHeader, RequestParameter } from '../../models/request';
-import { isRequestMeta, RequestMeta } from '../../models/request-meta';
-import { RequestVersion } from '../../models/request-version';
-import { Response } from '../../models/response';
-import { isWebSocketRequest, isWebSocketRequestId, WebSocketRequest } from '../../models/websocket-request';
-import { WebSocketResponse } from '../../models/websocket-response';
+import type { MockRoute } from '../../models/mock-route';
+import type { MockServer } from '../../models/mock-server';
+import { getPathParametersFromUrl, isEventStreamRequest, isRequest, type Request, type RequestAuthentication, type RequestBody, type RequestHeader, type RequestParameter } from '../../models/request';
+import { isRequestMeta, type RequestMeta } from '../../models/request-meta';
+import type { RequestVersion } from '../../models/request-version';
+import type { Response } from '../../models/response';
+import { isWebSocketRequest, isWebSocketRequestId, type WebSocketRequest } from '../../models/websocket-request';
+import type { WebSocketResponse } from '../../models/websocket-response';
 import { getAuthHeader } from '../../network/authentication';
-import { fetchRequestData, getPreRequestScriptOutput, responseTransform, savePatchesMadeByScript, sendCurlAndWriteTimeline, tryToExecuteAfterResponseScript, tryToInterpolateRequest, tryToTransformRequestWithPlugins } from '../../network/network';
+import { fetchRequestData, responseTransform, sendCurlAndWriteTimeline, tryToExecuteAfterResponseScript, tryToExecutePreRequestScript, tryToInterpolateRequest, tryToTransformRequestWithPlugins } from '../../network/network';
 import { RenderErrorSubType } from '../../templating';
 import { invariant } from '../../utils/invariant';
 import { SegmentEvent } from '../analytics';
 import { updateMimeType } from '../components/dropdowns/content-type-dropdown';
-import { CreateRequestType } from '../hooks/use-request';
+import type { CreateRequestType } from '../hooks/use-request';
 
 export interface WebSocketRequestLoaderData {
   activeRequest: WebSocketRequest;
@@ -114,13 +114,16 @@ export const createRequestAction: ActionFunction = async ({ request, params }) =
   invariant(typeof workspaceId === 'string', 'Workspace ID is required');
   const { requestType, parentId, req } = await request.json() as { requestType: CreateRequestType; parentId?: string; req?: Request };
 
+  const settings = await models.settings.getOrCreate();
+  const defaultHeaders = settings.disableAppVersionUserAgent ? [] : [{ name: 'User-Agent', value: `insomnia/${version}` }];
+
   let activeRequestId;
   if (requestType === 'HTTP') {
     activeRequestId = (await models.request.create({
       parentId: parentId || workspaceId,
       method: METHOD_GET,
       name: 'New Request',
-      headers: [{ name: 'User-Agent', value: `insomnia/${version}` }],
+      headers: defaultHeaders,
     }))._id;
   }
   if (requestType === 'gRPC') {
@@ -130,11 +133,12 @@ export const createRequestAction: ActionFunction = async ({ request, params }) =
     }))._id;
   }
   if (requestType === 'GraphQL') {
+
     activeRequestId = (await models.request.create({
       parentId: parentId || workspaceId,
       method: METHOD_POST,
       headers: [
-        { name: 'User-Agent', value: `insomnia/${version}` },
+        ...defaultHeaders,
         { name: 'Content-Type', value: CONTENT_TYPE_JSON },
       ],
       body: {
@@ -150,7 +154,7 @@ export const createRequestAction: ActionFunction = async ({ request, params }) =
       method: METHOD_GET,
       url: '',
       headers: [
-        { name: 'User-Agent', value: `insomnia/${version}` },
+        ...defaultHeaders,
         { name: 'Accept', value: CONTENT_TYPE_EVENT_STREAM },
       ],
       name: 'New Event Stream',
@@ -160,7 +164,7 @@ export const createRequestAction: ActionFunction = async ({ request, params }) =
     activeRequestId = (await models.webSocketRequest.create({
       parentId: parentId || workspaceId,
       name: 'New WebSocket Request',
-      headers: [{ name: 'User-Agent', value: `insomnia/${version}` }],
+      headers: defaultHeaders,
     }))._id;
   }
   if (requestType === 'From Curl') {
@@ -367,14 +371,16 @@ export const sendAction: ActionFunction = async ({ request, params }) => {
   try {
     window.main.startExecution({ requestId });
     const requestData = await fetchRequestData(requestId);
+
     window.main.addExecutionStep({ requestId, stepName: 'Executing pre-request script' });
-    const mutatedContext = await getPreRequestScriptOutput(requestData, workspaceId);
+    const mutatedContext = await tryToExecutePreRequestScript(requestData, workspaceId);
     window.main.completeExecutionStep({ requestId });
     if (mutatedContext === null) {
       return null;
     }
     // disable after-response script here to avoiding rendering it
-    const afterResponseScript = `${mutatedContext.request.afterResponseScript}`;
+    // @TODO This should be handled in a better way. Maybe remove the key from the request object we pass in tryToInterpolateRequest
+    const afterResponseScript = mutatedContext.request.afterResponseScript ? `${mutatedContext.request.afterResponseScript}` : undefined;
     mutatedContext.request.afterResponseScript = '';
 
     window.main.addExecutionStep({ requestId, stepName: 'Rendering request' });
@@ -420,29 +426,14 @@ export const sendAction: ActionFunction = async ({ request, params }) => {
     const shouldWriteToFile = shouldPromptForPathAfterResponse && is2XXWithBodyPath;
 
     mutatedContext.request.afterResponseScript = afterResponseScript;
-    if (requestData.request.afterResponseScript) {
-      const baseEnvironment = await models.environment.getOrCreateForParentId(workspaceId);
-      const cookieJar = await models.cookieJar.getOrCreateForParentId(workspaceId);
-      const globals = mutatedContext.globals;
+    window.main.addExecutionStep({ requestId, stepName: 'Executing after-response script' });
+    await tryToExecuteAfterResponseScript({
+      ...requestData,
+      ...mutatedContext,
+      response,
+    });
+    window.main.completeExecutionStep({ requestId });
 
-      window.main.addExecutionStep({ requestId, stepName: 'Executing after-response script' });
-
-      const postMutatedContext = await tryToExecuteAfterResponseScript({
-        ...requestData,
-        ...mutatedContext,
-        baseEnvironment,
-        cookieJar,
-        response,
-        globals,
-      });
-      window.main.completeExecutionStep({ requestId });
-      if (!postMutatedContext?.request) {
-        // exiy early if there was a problem with the pre-request script
-        // TODO: improve error message?
-        return null;
-      }
-      await savePatchesMadeByScript(postMutatedContext, requestData.environment, baseEnvironment, globals);
-    }
     if (!shouldWriteToFile) {
       const response = await models.response.create(responsePatch, requestData.settings.maxHistoryResponses);
       await models.requestMeta.update(requestMeta, { activeResponseId: response._id });

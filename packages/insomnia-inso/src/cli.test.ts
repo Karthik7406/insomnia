@@ -1,190 +1,100 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { MockedFunction } from 'jest-mock';
-import { parseArgsStringToArgv } from 'string-argv';
+import { describe, expect, it } from '@jest/globals';
+import { exec, ExecException } from 'child_process';
+import path from 'path';
 
-import * as packageJson from '../package.json';
-import * as cli from './cli';
-import { exportSpecification as _exportSpecification } from './commands/export-specification';
-import { lintSpecification as _lintSpecification } from './commands/lint-specification';
-import { runInsomniaTests as _runInsomniaTests } from './commands/run-tests';
-import { globalBeforeAll, globalBeforeEach } from './jest/before';
-import { logger } from './logger';
-import { exit as _exit } from './util';
+// dev experience
+// goals: it should be quick and run in  ci and should be easy to debug
+// ideas: create a second test.yml easier to reason about the state of node-libcurl it can parallel
 
-jest.mock('./commands/lint-specification');
-jest.mock('./commands/run-tests');
-jest.mock('./commands/export-specification');
-jest.unmock('cosmiconfig');
-jest.mock('./util');
+// issues: no immeidate feedback as the test is running
+//               run the test, do you need to know about the libcurl thing or should i be automated?
 
-const initInso = () => {
-  return (...args: string[]): void => {
-    const cliArgs = parseArgsStringToArgv(`node test ${args.join(' ')}`);
-    return cli.go(cliArgs, true);
-  };
-};
+// should be each to copy and run in local js debug terminal
+// and also print which one fails when running all tests
+// TODO: move all fixtures to the same folder, and name valid or invalid or whatever
+const shouldReturnSuccessCode = [
+  '$PWD/packages/insomnia-inso/bin/inso -h',
+  // identifier filepath
+  '$PWD/packages/insomnia-inso/bin/inso lint spec packages/insomnia-inso/src/commands/fixtures/openapi-spec.yaml',
+  // identifier filepath with spectral.yaml
+  '$PWD/packages/insomnia-inso/bin/inso lint spec packages/insomnia-inso/src/commands/fixtures/with-ruleset/path-plugin.yaml',
+  '$PWD/packages/insomnia-inso/bin/inso lint spec -w packages/insomnia-inso/src/commands/fixtures/with-ruleset path-plugin.yaml',
+  // lint from db
+  '$PWD/packages/insomnia-inso/bin/inso lint spec -w packages/insomnia-inso/src/db/fixtures/nedb spc_46c5a4',
+  '$PWD/packages/insomnia-inso/bin/inso lint spec -w packages/insomnia-inso/src/db/fixtures/git-repo spc_46c5a4',
+  '$PWD/packages/insomnia-inso/bin/inso lint spec -w packages/insomnia-inso/src/db/fixtures/insomnia-v4/insomnia_v4.yaml spc_3b2850',
+  // export from db
+  '$PWD/packages/insomnia-inso/bin/inso export spec -w packages/insomnia-inso/src/db/fixtures/nedb spc_46c5a4',
+  '$PWD/packages/insomnia-inso/bin/inso export spec -w packages/insomnia-inso/src/db/fixtures/git-repo spc_46c5a4',
+  '$PWD/packages/insomnia-inso/bin/inso export spec -w packages/insomnia-inso/src/db/fixtures/insomnia-v4/insomnia_v4.yaml spc_3b2850',
+  // test from db
+  '$PWD/packages/insomnia-inso/bin/inso run test -w packages/insomnia-inso/src/db/fixtures/nedb -e env_env_ca046a uts_fe901c',
+  '$PWD/packages/insomnia-inso/bin/inso run test -w packages/insomnia-inso/src/db/fixtures/nedb -e env_env_ca046a --reporter min uts_fe901c',
+  '$PWD/packages/insomnia-inso/bin/inso run test -w packages/insomnia-inso/src/db/fixtures/git-repo -e env_env_ca046a uts_fe901c',
+  '$PWD/packages/insomnia-inso/bin/inso run test -w packages/insomnia-inso/src/db/fixtures/insomnia-v4/insomnia_v4.yaml -e env_env_0e4670 spc_3b2850',
+  '$PWD/packages/insomnia-inso/bin/inso run test -w packages/insomnia-inso/src/examples/folder-inheritance-document.yml spc_a8144e --verbose',
+  // workspace - request from db
+  // '$PWD/packages/insomnia-inso/bin/inso run collection -w packages/insomnia-inso/src/db/fixtures/insomnia-v4/insomnia_v4.yaml -e env_env_0e4670 --requestNamePattern "Example 1" wrk_8ee1e0',
+  // TODO: request group - request from db, add simple export file pointing at local server
+  // TODO: add bail option
+];
 
-const lintSpecification = _lintSpecification as MockedFunction<typeof _lintSpecification>;
-const runInsomniaTests = _runInsomniaTests as MockedFunction<typeof _runInsomniaTests>;
-const exportSpecification = _exportSpecification as MockedFunction<typeof _exportSpecification>;
-const exit = _exit as MockedFunction<typeof _exit>;
-
-describe('cli', () => {
-  beforeAll(() => {
-    globalBeforeAll();
+const shouldReturnErrorCode = [
+  '$PWD/packages/insomnia-inso/bin/inso run test -w packages/insomnia-inso/src/db/fixtures/nedb -e env_env_ca046a uts_7f0f85',
+  '$PWD/packages/insomnia-inso/bin/inso run test -w packages/insomnia-inso/src/db/fixtures/git-repo -e env_env_ca046a uts_7f0f85',
+  '$PWD/packages/insomnia-inso/bin/inso lint spec -w packages/insomnia-inso/src/db/fixtures/git-repo-malformed-spec spc_46c5a4',
+  '$PWD/packages/insomnia-inso/bin/inso lint spec packages/insomnia-inso/src/db/fixtures/insomnia-v4/malformed.yaml',
+];
+describe('inso dev bundle', () => {
+  it.each(shouldReturnSuccessCode)('exit code should be 0: %p', async input => {
+    const result = await cli(input);
+    if (result.code !== 0) {
+      console.log(result);
+    }
+    expect(result.code).toBe(0);
   });
-
-  let inso = initInso();
-
-  beforeEach(() => {
-    globalBeforeEach();
-    inso = initInso();
-    jest.spyOn(console, 'error').mockImplementation(() => { });
-    lintSpecification.mockResolvedValue(true);
-    runInsomniaTests.mockResolvedValue(true);
-    exportSpecification.mockResolvedValue(true);
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
-  describe('global options', () => {
-    it.each(['-v', '--version'])('inso %s should print version from package.json', args => {
-      logger.wrapAll();
-      expect(() => inso(args)).toThrowError(packageJson.version);
-      logger.restoreAll();
-    });
-
-  });
-
-  describe('lint specification', () => {
-    it('should call lintSpecification with no arg', () => {
-      inso('lint spec');
-      expect(lintSpecification).toHaveBeenCalledWith(undefined, {});
-    });
-
-    it('should call lintSpecification with expected options', () => {
-      inso('lint spec file.yaml');
-      expect(lintSpecification).toHaveBeenCalledWith('file.yaml', {});
-    });
-
-    it('should call generateConfig with global options', () => {
-      inso('lint spec file.yaml -w dir1 --src src --ci');
-      expect(lintSpecification).toHaveBeenCalledWith('file.yaml', {
-        workingDir: 'dir1',
-        src: 'src',
-        ci: true,
-      });
-    });
-  });
-
-  describe('run test', () => {
-    it('should call runInsomniaTests with no arg and default reporter', () => {
-      inso('run test');
-      expect(runInsomniaTests).toHaveBeenCalledWith(undefined, {
-        reporter: 'spec',
-      });
-    });
-
-    it('should throw error if env argument is missing', () => {
-      expect(() => inso('run test -e')).toThrowError();
-    });
-
-    it('should throw error if testNamePattern argument is missing', () => {
-      expect(() => inso('run test -t')).toThrowError();
-    });
-
-    it('should throw error if reporter argument is missing', () => {
-      expect(() => inso('run test -r')).toThrowError();
-    });
-
-    it('should call runInsomniaTests with expected options', () => {
-      inso('run test uts_123 -e env_123 -t name -r min -b --keepFile');
-      expect(runInsomniaTests).toHaveBeenCalledWith('uts_123', {
-        reporter: 'min',
-        keepFile: true,
-        bail: true,
-        env: 'env_123',
-        testNamePattern: 'name',
-      });
-    });
-
-    it('should call runInsomniaTests with global options', () => {
-      inso('run test uts_123 -w dir1 --src src --ci');
-      expect(runInsomniaTests).toHaveBeenCalledWith(
-        'uts_123',
-        expect.objectContaining({
-          workingDir: 'dir1',
-          src: 'src',
-          ci: true,
-        }),
-      );
-    });
-  });
-
-  describe('export spec', () => {
-    it('should call exportSpec with no arg', () => {
-      inso('export spec');
-      expect(exportSpecification).toHaveBeenCalledWith(undefined,
-        { skipAnnotations: false });
-    });
-
-    it('should call exportSpec with all expected arguments', () => {
-      inso('export spec spc_123 -o output.yaml -s');
-      expect(exportSpecification).toHaveBeenCalledWith('spc_123', {
-        output: 'output.yaml', skipAnnotations: true,
-      });
-    });
-
-    it('should call generateConfig with global options', () => {
-      inso('export spec spc_123 -w testing/dir');
-      expect(exportSpecification).toHaveBeenCalledWith(
-        'spc_123',
-        expect.objectContaining({
-          workingDir: 'testing/dir',
-        }),
-      );
-    });
-  });
-
-  describe('script', () => {
-    const insorcFilePath = '--config src/fixtures/.insorc-with-scripts.yaml';
-
-    const expectExitWith = async (result: boolean): Promise<void> =>
-      expect(
-        exit.mock.calls[0][0],
-      ).resolves.toBe(result);
-
-    it('should warn if script task does not start with inso', async () => {
-      inso('invalid-script', insorcFilePath);
-
-      const logs = logger.__getLogs();
-
-      expect(logs.fatal).toContain('Tasks in a script should start with `inso`.');
-      await expectExitWith(false);
-    });
-
-    it('should override env setting from command', async () => {
-      inso('test:200s --env NewEnv', insorcFilePath);
-      expect(runInsomniaTests).toHaveBeenCalledWith(
-        'Designer Demo',
-        expect.objectContaining({
-          env: 'NewEnv',
-        }),
-      );
-      await expectExitWith(true);
-    });
-
-    it('should fail if script not found', async () => {
-      inso('not-found-script', insorcFilePath);
-
-      const logs = logger.__getLogs();
-
-      expect(logs.fatal).toContain(
-        'Could not find inso script "not-found-script" in the config file.',
-      );
-      await expectExitWith(false);
-    });
+  it.each(shouldReturnErrorCode)('exit code should be 1: %p', async input => {
+    const result = await cli(input);
+    if (result.code !== 1) {
+      console.log(result);
+    }
+    expect(result.code).toBe(1);
   });
 });
+
+const packagedSuccessCodes = shouldReturnSuccessCode.map(x => x.replace('$PWD/packages/insomnia-inso/bin/inso', '$PWD/packages/insomnia-inso/binaries/inso'));
+const packagedErrorCodes = shouldReturnErrorCode.map(x => x.replace('$PWD/packages/insomnia-inso/bin/inso', '$PWD/packages/insomnia-inso/binaries/inso'));
+
+describe('inso packaged binary', () => {
+  it.each(packagedSuccessCodes)('exit code should be 0: %p', async input => {
+    const result = await cli(input);
+    if (result.code !== 0) {
+      console.log(result);
+    }
+    expect(result.code).toBe(0);
+  });
+  it.each(packagedErrorCodes)('exit code should be 1: %p', async input => {
+    const result = await cli(input);
+    if (result.code !== 1) {
+      console.log(result);
+    }
+    expect(result.code).toBe(1);
+  });
+});
+
+const cli = (input: string): Promise<{ code: number; error: ExecException | null; stdout: string; stderr: string }> => {
+  return new Promise(resolve => {
+    exec(input,
+      {
+        cwd: path.resolve(__dirname, '../../..'),
+      },
+      (error, stdout, stderr) => {
+        resolve({
+          code: error && error.code ? error.code : 0,
+          error,
+          stdout,
+          stderr,
+        });
+      });
+  });
+};

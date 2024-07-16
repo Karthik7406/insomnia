@@ -23,9 +23,15 @@ import { checkIfRestartNeeded } from './main/squirrel-startup';
 import * as updates from './main/updates';
 import * as windowUtils from './main/window-utils';
 import * as models from './models/index';
-import { Project, RemoteProject } from './models/project';
+import type { Project, RemoteProject } from './models/project';
 import type { Stats } from './models/stats';
 import type { ToastNotification } from './ui/components/toast';
+
+// Override the Electron userData path
+// This makes Chromium use this folder for eg localStorage
+// ensure userData dir change is made before configure sentry SDK (https://docs.sentry.io/platforms/javascript/guides/electron/#app-userdata-directory)
+const dataPath = process.env.INSOMNIA_DATA_PATH || path.join(app.getPath('userData'), '../', isDevelopment() ? 'insomnia-app' : userDataFolder);
+app.setPath('userData', dataPath);
 
 initializeSentry();
 
@@ -38,11 +44,6 @@ if (checkIfRestartNeeded()) {
 
 initializeLogging();
 log.info(`Running version ${getAppVersion()}`);
-
-// Override the Electron userData path
-// This makes Chromium use this folder for eg localStorage
-const dataPath = process.env.INSOMNIA_DATA_PATH || path.join(app.getPath('userData'), '../', isDevelopment() ? 'insomnia-app' : userDataFolder);
-app.setPath('userData', dataPath);
 
 // So if (window) checks don't throw
 global.window = global.window || undefined;

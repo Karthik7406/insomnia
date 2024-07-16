@@ -1,4 +1,4 @@
-import React, { DOMAttributes, FunctionComponent, useEffect, useState } from 'react';
+import React, { type DOMAttributes, type FunctionComponent, useEffect, useState } from 'react';
 
 import type { TimingStep } from '../../main/network/request-timing';
 
@@ -29,7 +29,7 @@ const MillisecondTimer = () => {
 };
 export const ResponseTimer: FunctionComponent<Props> = ({ handleCancel, activeRequestId, steps }) => {
   return (
-    <div className="overlay theme--transparent-overlay">
+    <div className="overlay theme--transparent-overlay-darker">
       <div className="timer-list w-full">
         {steps.map((record: TimingStep) => (
           <div

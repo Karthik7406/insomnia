@@ -4,9 +4,9 @@ import { stat } from 'fs/promises';
 import { OpenAPIV3 } from 'openapi-types';
 import path from 'path';
 import React, {
-  FC,
+  type FC,
   Fragment,
-  ReactNode,
+  type ReactNode,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -31,9 +31,9 @@ import {
   Tooltip,
   TooltipTrigger,
 } from 'react-aria-components';
-import { ImperativePanelGroupHandle, Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { type ImperativePanelGroupHandle, Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import {
-  LoaderFunction,
+  type LoaderFunction,
   NavLink,
   useFetcher,
   useLoaderData,
@@ -47,13 +47,13 @@ import YAMLSourceMap from 'yaml-source-map';
 
 import { parseApiSpec } from '../../common/api-specs';
 import { ACTIVITY_SPEC, DEFAULT_SIDEBAR_SIZE } from '../../common/constants';
-import { debounce } from '../../common/misc';
-import { ApiSpec } from '../../models/api-spec';
+import { debounce, isNotNullOrUndefined } from '../../common/misc';
+import type { ApiSpec } from '../../models/api-spec';
 import * as models from '../../models/index';
 import { invariant } from '../../utils/invariant';
 import {
   CodeEditor,
-  CodeEditorHandle,
+  type CodeEditorHandle,
 } from '../components/codemirror/code-editor';
 import { DesignEmptyState } from '../components/design-empty-state';
 import { WorkspaceDropdown } from '../components/dropdowns/workspace-dropdown';
@@ -73,7 +73,7 @@ import {
 } from '../hooks/use-vcs-version';
 import { SpectralRunner } from '../worker/spectral-run';
 import { useRootLoaderData } from './root';
-import { WorkspaceLoaderData } from './workspace';
+import type { WorkspaceLoaderData } from './workspace';
 
 interface LoaderData {
   apiSpec: ApiSpec;
@@ -483,14 +483,14 @@ const Design: FC = () => {
               className="px-4 py-1 max-w-full truncate flex-1 flex items-center justify-center gap-2 aria-pressed:bg-[--hl-sm] rounded-sm text-[--color-font] hover:bg-[--hl-xs] focus:ring-inset ring-1 ring-transparent focus:ring-[--hl-md] transition-all text-sm"
             >
                 <Icon icon="cookie-bite" className='w-5 flex-shrink-0' />
-              <span className='truncate'>{activeCookieJar.cookies.length === 0 ? 'Add' : 'Manage'} Cookies</span>
+                <span className='truncate'>{activeCookieJar.cookies.length === 0 ? 'Add' : 'Manage'} Cookies {activeCookieJar.cookies.length > 0 ? `(${activeCookieJar.cookies.length})` : ''}</span>
             </Button>
             <Button
               onPress={() => setCertificatesModalOpen(true)}
               className="px-4 py-1 max-w-full truncate flex-1 flex items-center justify-center gap-2 aria-pressed:bg-[--hl-sm] rounded-sm text-[--color-font] hover:bg-[--hl-xs] focus:ring-inset ring-1 ring-transparent focus:ring-[--hl-md] transition-all text-sm"
             >
                 <Icon icon="file-contract" className='w-5 flex-shrink-0' />
-              <span className='truncate'>{clientCertificates.length === 0 || caCertificate ? 'Add' : 'Manage'} Certificates</span>
+                <span className='truncate'>{clientCertificates.length === 0 || caCertificate ? 'Add' : 'Manage'} Certificates {[...clientCertificates, caCertificate].filter(cert => !cert?.disabled).filter(isNotNullOrUndefined).length > 0 ? `(${[...clientCertificates, caCertificate].filter(cert => !cert?.disabled).filter(isNotNullOrUndefined).length})` : ''}</span>
             </Button>
           </div>
           </div>

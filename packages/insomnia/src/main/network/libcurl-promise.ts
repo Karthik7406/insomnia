@@ -4,6 +4,7 @@ import { invariant } from '../../utils/invariant';
 invariant(process.type !== 'renderer', 'Native abstractions for Nodejs module unavailable in renderer');
 
 import { Curl, CurlAuth, CurlCode, CurlFeature, CurlHttpVersion, CurlInfoDebug, CurlNetrc, CurlSslOpt } from '@getinsomnia/node-libcurl';
+import { isValid } from 'date-fns';
 import electron from 'electron';
 import fs from 'fs';
 import path from 'path';
@@ -14,9 +15,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { version } from '../../../package.json';
 import { AUTH_AWS_IAM, AUTH_DIGEST, AUTH_NETRC, AUTH_NTLM, CONTENT_TYPE_FORM_DATA, CONTENT_TYPE_FORM_URLENCODED } from '../../common/constants';
 import { describeByteSize, hasAuthHeader } from '../../common/misc';
-import { ClientCertificate } from '../../models/client-certificate';
-import { RequestHeader } from '../../models/request';
-import { ResponseHeader } from '../../models/response';
+import type { ClientCertificate } from '../../models/client-certificate';
+import type { RequestHeader } from '../../models/request';
+import type { ResponseHeader } from '../../models/response';
 import { buildMultipart } from './multipart';
 import { parseHeaderStrings } from './parse-header-strings';
 export interface CurlRequestOptions {
@@ -371,7 +372,7 @@ export const createConfiguredCurlInstance = ({
           cookie.hostOnly ? 'FALSE' : 'TRUE',
           cookie.path,
           cookie.secure ? 'TRUE' : 'FALSE',
-          cookie.expires ? Math.round(new Date(cookie.expires).getTime() / 1000) : 0,
+          cookie.expires && isValid(new Date(cookie.expires)) ? Math.round(new Date(cookie.expires).getTime() / 1000) : 0,
           cookie.key,
           cookie.value,
         ].join('\t');

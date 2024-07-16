@@ -1,15 +1,22 @@
-import { Cookie as InsomniaCookie, CookieJar as InsomniaCookieJar } from 'insomnia/src/models/cookie-jar';
+import type { Cookie as InsomniaCookie, CookieJar as InsomniaCookieJar } from 'insomnia/src/models/cookie-jar';
 import { Cookie as ToughCookie } from 'tough-cookie';
 import { v4 as uuidv4 } from 'uuid';
 
 import { Property, PropertyList } from './properties';
 
-export interface CookieOptions {
+export interface InsomniaCookieExtensions {
+    creation?: Date;
+    creationIndex?: number;
+    lastAccessed?: Date;
+    pathIsDefault?: boolean;
+};
+
+export interface CookieOptions extends InsomniaCookieExtensions {
     id?: string;
     key: string;
     value: string;
-    expires?: Date | string;
-    maxAge?: string | 'Infinity' | '-Infinity';
+    expires?: Date | string | null;
+    maxAge?: number | 'Infinity' | '-Infinity';
     domain?: string;
     path?: string;
     secure?: boolean;
@@ -20,9 +27,10 @@ export interface CookieOptions {
 }
 
 export class Cookie extends Property {
-    readonly _kind: string = 'Cookie';
+    override readonly _kind: string = 'Cookie';
     protected cookie: ToughCookie;
     private extensions?: { key: string; value: string }[];
+    private insoExtensions: InsomniaCookieExtensions = {};
 
     constructor(cookieDef: CookieOptions | string) {
         super();
@@ -46,9 +54,15 @@ export class Cookie extends Property {
 
         this.id = cookieDef.id || '';
         this.cookie = cookie;
+        this.insoExtensions = {
+            creation: cookieDef.creation,
+            creationIndex: cookieDef.creationIndex,
+            lastAccessed: cookieDef.lastAccessed,
+            pathIsDefault: cookieDef.pathIsDefault,
+        };
     }
 
-    static _index = 'key';
+    static override _index = 'key';
 
     static isCookie(obj: Property) {
         return '_kind' in obj && obj._kind === 'Cookie';
@@ -94,7 +108,7 @@ export class Cookie extends Property {
             key: cookieObj.key,
             value: cookieObj.value,
             expires: cookieObj.expires || undefined,
-            maxAge: `${cookieObj.maxAge}` || undefined,
+            maxAge: cookieObj.maxAge,
             domain: cookieObj.domain || undefined,
             path: cookieObj.path || undefined,
             secure: cookieObj.secure || false,
@@ -122,7 +136,7 @@ export class Cookie extends Property {
         return cookieStrs.join('; ');
     }
 
-    toString = () => {
+    override toString = () => {
         const hostOnlyPart = this.cookie.hostOnly ? '; HostOnly' : '';
         const sessionPart = this.cookie.extensions?.includes('session') ? '; Session' : '';
         const extensionPart = this.extensions && this.extensions.length > 0 ?
@@ -132,7 +146,7 @@ export class Cookie extends Property {
         return this.cookie.toString() + hostOnlyPart + sessionPart + extensionPart;
     };
 
-    valueOf = () => {
+    override valueOf = () => {
         return this.cookie.toJSON().value;
     };
 
@@ -140,7 +154,7 @@ export class Cookie extends Property {
         return this.cookie.toJSON().key;
     };
 
-    toJSON = () => {
+    override toJSON = () => {
         return {
             id: this.id,
             key: this.cookie.key,
@@ -154,12 +168,17 @@ export class Cookie extends Property {
             hostOnly: this.cookie.hostOnly,
             session: this.cookie.extensions?.includes('session'),
             extensions: this.extensions,
+            // extra fields from Insomnia
+            creation: this.insoExtensions.creation,
+            creationIndex: this.insoExtensions.creationIndex,
+            lastAccessed: this.insoExtensions.lastAccessed,
+            pathIsDefault: this.insoExtensions.pathIsDefault,
         };
     };
 }
 
 export class CookieList extends PropertyList<Cookie> {
-    _kind: string = 'CookieList';
+    override _kind: string = 'CookieList';
 
     constructor(cookies: Cookie[]) {
         super(
@@ -180,8 +199,8 @@ export class CookieObject extends CookieList {
     constructor(cookieJar: InsomniaCookieJar | null) {
         const cookies = cookieJar
             ? cookieJar.cookies.map((cookie: InsomniaCookie): Cookie => {
-                let expires: string | Date = '';
-                if (cookie.expires) {
+                let expires: string | Date | null = null;
+                if (cookie.expires || cookie.expires === 0) {
                     if (typeof cookie.expires === 'number') {
                         expires = new Date(cookie.expires);
                     } else {
@@ -202,6 +221,11 @@ export class CookieObject extends CookieList {
                     hostOnly: cookie.hostOnly,
                     session: undefined, // not supported in Insomnia
                     extensions: undefined, // TODO: its format from Insomnia is unknown
+                    // follows are properties from Insomnia
+                    creation: cookie.creation,
+                    creationIndex: cookie.creationIndex,
+                    lastAccessed: cookie.lastAccessed,
+                    pathIsDefault: cookie.pathIsDefault,
                 });
             })
             : [];
@@ -310,17 +334,17 @@ export class CookieJar {
                         id: cookieObj.id,
                         key: cookieObj.key,
                         value: cookieObj.value,
-                        expires: cookieObj.expires,
+                        expires: cookieObj.expires || 'Infinity', // transform it back to 'Infinity', avoid edge cases
                         domain: cookieObj.domain || undefined,
                         path: cookieObj.path || undefined,
                         secure: cookieObj.secure,
                         httpOnly: cookieObj.httpOnly,
                         extensions: cookieObj.extensions || undefined,
-                        creation: undefined,
-                        creationIndex: undefined,
+                        creation: cookieObj.creation,
+                        creationIndex: cookieObj.creationIndex,
                         hostOnly: cookieObj.hostOnly || undefined,
-                        pathIsDefault: undefined,
-                        lastAccessed: undefined,
+                        pathIsDefault: cookieObj.pathIsDefault,
+                        lastAccessed: cookieObj.lastAccessed,
                     });
                 });
             });

@@ -1,7 +1,7 @@
 import type { IRuleResult } from '@stoplight/spectral-core';
 import { generate, runTests, type Test } from 'insomnia-testing';
 import path from 'path';
-import { ActionFunction, redirect } from 'react-router-dom';
+import { type ActionFunction, redirect } from 'react-router-dom';
 
 import { parseApiSpec, resolveComponentSchemaRefs } from '../../common/api-specs';
 import { ACTIVITY_DEBUG, getAIServiceURL } from '../../common/constants';
@@ -10,18 +10,18 @@ import { database as db } from '../../common/database';
 import { importResourcesToWorkspace, scanResources } from '../../common/import';
 import { generateId } from '../../common/misc';
 import * as models from '../../models';
-import { GrpcRequest } from '../../models/grpc-request';
+import type { GrpcRequest } from '../../models/grpc-request';
 import { getById, update } from '../../models/helpers/request-operations';
-import { MockServer } from '../../models/mock-server';
+import type { MockServer } from '../../models/mock-server';
 import { isRemoteProject } from '../../models/project';
-import { isRequest, Request } from '../../models/request';
-import { isRequestGroup, isRequestGroupId, RequestGroup } from '../../models/request-group';
+import { isRequest, type Request } from '../../models/request';
+import { isRequestGroup, isRequestGroupId, type RequestGroup } from '../../models/request-group';
 import { isRequestGroupMeta } from '../../models/request-group-meta';
-import { UnitTest } from '../../models/unit-test';
-import { UnitTestSuite } from '../../models/unit-test-suite';
-import { WebSocketRequest } from '../../models/websocket-request';
-import { isCollection, isMockServer, scopeToActivity, Workspace } from '../../models/workspace';
-import { WorkspaceMeta } from '../../models/workspace-meta';
+import type { UnitTest } from '../../models/unit-test';
+import type { UnitTestSuite } from '../../models/unit-test-suite';
+import type { WebSocketRequest } from '../../models/websocket-request';
+import { isCollection, isEnvironment, scopeToActivity, type Workspace } from '../../models/workspace';
+import type { WorkspaceMeta } from '../../models/workspace-meta';
 import { getSendRequestCallback } from '../../network/unit-test-feature';
 import { initializeLocalBackendProjectAndMarkForSync } from '../../sync/vcs/initialize-backend-project';
 import { VCSInstance } from '../../sync/vcs/insomnia-sync';
@@ -80,7 +80,7 @@ export const createNewProjectAction: ActionFunction = async ({ request, params }
       }
 
       if (newCloudProject.error === 'PROJECT_STORAGE_RESTRICTION') {
-        error = 'The owner of the organization allows only Local Vault project creation, please try again.';
+        error = newCloudProject.message ?? 'The owner of the organization allows only Local Vault project creation.';
       }
 
       return {
@@ -370,7 +370,9 @@ export const createNewWorkspaceAction: ActionFunction = async ({
         workspace,
       });
     }
-
+    window.main.trackSegmentEvent({
+      event: SegmentEvent.mockCreate,
+    });
     return redirect(`/organization/${organizationId}/project/${projectId}/workspace/${workspace._id}/${scopeToActivity(workspace.scope)}`);
   }
 
@@ -398,8 +400,8 @@ export const createNewWorkspaceAction: ActionFunction = async ({
 
   if (isCollection(workspace)) {
     event = SegmentEvent.collectionCreate;
-  } else if (isMockServer(workspace)) {
-    event = SegmentEvent.mockCreate;
+  } else if (isEnvironment(workspace)) {
+    event = SegmentEvent.environmentWorkspaceCreate;
   }
 
   window.main.trackSegmentEvent({
